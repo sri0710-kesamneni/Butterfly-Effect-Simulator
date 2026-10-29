@@ -138,7 +138,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-DATA_PATH = Path(__file__).resolve().parent / "data" / "data.xlsx"
+DATA_PATH = Path(__file__).resolve().parent / "data.xlsx"
 
 @st.cache_data(show_spinner=False)
 def get_data(path_string, modified_time):

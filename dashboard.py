@@ -152,7 +152,7 @@ if not DATA_PATH.exists():
     <h1>Small shifts.<br>Different queues.</h1>
     <p>Explore the effect of small changes in a human-facing service system.</p></div>
     """, unsafe_allow_html=True)
-    st.error("Workbook not found. Place your Excel file at `data/data.xlsx`.")
+    st.error("Workbook not found. Place data.xlsx in the project root folder.")
     st.markdown("[Open the selected dataset source](https://data.mendeley.com/datasets/79zt3t734g/1)")
     st.stop()
 

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from real_data import load_workbook, prepare_data, data_quality, duration_summary, duration_sensitivity, correlation_summary, theoretical_capacity_experiment
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent / "data.xlsx"
 OUT = ROOT / "outputs"
 OUT.mkdir(exist_ok=True)
 

@@ -486,57 +486,57 @@ elif page == "Counter capacity":
 # ─────────────────────────────────────────────────────────────────────────────
 # 8. AI research notes (optional local Ollama)
 # ─────────────────────────────────────────────────────────────────────────────
-elif page == "AI research notes":
-    page_header("WORKSPACE 07", "AI research notes", "Use a local language model to help interpret computed results and propose experiments. Numerical calculations remain in Python.")
-    st.markdown('<div class="note">AI output is hypothesis generation only. Verify every numerical statement against the tables and test recommendations in the simulator before including them in your report.</div>', unsafe_allow_html=True)
-    model = st.text_input("Ollama model", value="llama3.2")
-    task = st.selectbox("What should the assistant help with?", [
-        "Interpret the observed duration profile",
-        "Suggest follow-up sensitivity experiments",
-        "Propose service interventions to test",
-        "Draft a limitations section",
-    ])
-    if task == "Interpret the observed duration profile":
-        prompt_task = "Interpret the provided summary. Identify patterns, avoid causal claims, and clearly distinguish observation from hypothesis."
-    elif task == "Suggest follow-up sensitivity experiments":
-        prompt_task = "Suggest 5 specific sensitivity experiments. For each, give the parameter, values to test, outcome metrics, and what result would support the hypothesis."
-    elif task == "Propose service interventions to test":
-        prompt_task = "Propose 4 possible service interventions as testable hypotheses. For each, name the simulation change and measurable success metric. Do not claim they will work without testing."
-    else:
-        prompt_task = "Draft a concise limitations section covering dataset provenance, measurement definition, proxy assumptions, stochastic variation, and external validity."
-    if st.button("Generate research notes", type="primary"):
-        payload = {
-            "model": model,
-            "stream": False,
-            "prompt": (
-                "You are a careful research assistant. Do not invent statistics or citations. "
-                "State that the duration is order-to-delivery system time, not necessarily queue waiting time or service time. "
-                "Clearly label assumptions and synthetic data if present.\n\n"
-                f"Task: {prompt_task}\n\n"
-                f"Data status: {'synthetic generated records' if is_synthetic else 'workbook provenance not independently verified here'}\n"
-                f"Rows: {len(df)}\n"
-                f"Mean duration minutes: {summary['mean_min']:.4f}\n"
-                f"Median duration minutes: {summary['median_min']:.4f}\n"
-                f"95th percentile minutes: {summary['p95_min']:.4f}\n"
-                f"Standard deviation minutes: {valid_duration.std():.4f}\n"
-            )
-        }
-        req = urllib.request.Request(
-            "http://localhost:11434/api/generate",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=120) as response:
-                answer = json.loads(response.read().decode("utf-8")).get("response", "")
-            st.markdown("### Draft research notes")
-            st.write(answer)
-            st.download_button("Download notes", answer, "ai_research_notes.txt", "text/plain")
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            st.error("Could not connect to Ollama. Start the Ollama app, ensure the model is downloaded, and try again.")
-            st.caption(str(exc))
-    st.markdown("### Reliable prompt checklist")
-    st.markdown("- Give the model only aggregate metrics, not identifiable personal data.\n- Ask it to separate observed facts from hypotheses.\n- Recalculate all numbers in Python.\n- Test every suggested intervention before claiming an improvement.")
+from groq import Groq
 
-st.markdown('<div class="footer">BUTTERFLY EFFECT / RESEARCH STUDIO &nbsp; · &nbsp; Data quality → Patterns → Relationships → Sensitivity → Capacity</div>', unsafe_allow_html=True)
+api_key = st.secrets.get("GROQ_API_KEY", "")
+
+if st.button("Generate research notes", type="primary"):
+    if not api_key:
+        st.error("Add GROQ_API_KEY in Streamlit app secrets first.")
+    else:
+        client = Groq(api_key=api_key)
+
+        with st.spinner("Generating research notes..."):
+            try:
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a careful research assistant. "
+                                "Do not invent statistics or citations. "
+                                "Separate observed facts from hypotheses. "
+                                "Never claim correlation proves causation."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Task: {prompt_task}\n"
+                                f"Data status: {'synthetic generated records' if is_synthetic else 'source not independently verified'}\n"
+                                f"Number of records: {len(df)}\n"
+                                f"Mean duration: {summary['mean_min']:.2f} minutes\n"
+                                f"Median duration: {summary['median_min']:.2f} minutes\n"
+                                f"95th percentile: {summary['p95_min']:.2f} minutes\n"
+                                "The duration is order-to-delivery system time, "
+                                "not necessarily queue waiting time or service time."
+                            ),
+                        },
+                    ],
+                    temperature=0.3,
+                )
+
+                answer = response.choices[0].message.content
+                st.markdown("### Research notes")
+                st.write(answer)
+
+                st.download_button(
+                    "Download notes",
+                    answer,
+                    "ai_research_notes.txt",
+                    "text/plain",
+                )
+
+            except Exception as exc:
+                st.error(f"AI request failed: {exc}")
